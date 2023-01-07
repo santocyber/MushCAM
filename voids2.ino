@@ -1,4 +1,8 @@
 
+
+
+
+
 void handleNewMessages(int numNewMessages) {
   //Serial.println("handleNewMessages");
   //Serial.println(String(numNewMessages));
@@ -13,7 +17,7 @@ void handleNewMessages(int numNewMessages) {
    
     if (from_name == "") from_name = "Guest";
 
-    String hi = "Vc disse?: ";
+    String hi = "Vc disse isso mesmo? Vou executar! ";
     hi += text;
     bot.sendMessage(chat_id, hi, "Markdown");
     client.setHandshakeTimeout(120000);
@@ -147,8 +151,8 @@ void handleNewMessages(int numNewMessages) {
 
       fb = NULL;
 
-      //sensor_t * s = esp_camera_sensor_get();
-      //s->set_framesize(s, FRAMESIZE_VGA);
+      sensor_t * s = esp_camera_sensor_get();
+      s->set_framesize(s, FRAMESIZE_HD);
 
       Serial.println("\n\n\nSending VGA");
 
@@ -179,14 +183,85 @@ void handleNewMessages(int numNewMessages) {
       // record the video
       bot.longPoll =  0;
 
-    //  xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
-      xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 0);  //v8.5
+      xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
+    //  xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 0);  //v8.5
 
       if ( the_camera_loop_task == NULL ) {
         //vTaskDelete( xHandle );
         Serial.printf("do_the_steaming_task failed to start! %d\n", the_camera_loop_task);
       }
     }
+
+
+    if (text == "/server") {
+
+    String welcome = "MushCam bot.\n\n";
+      
+    welcome += "Acesse o ip http://";
+    welcome +=  WiFi.localIP().toString(); 
+    welcome += "\n";
+    welcome += "servidor local,Sorria!";
+    bot.sendMessage(chat_id, welcome, "Markdown");  
+    if (cam == "on"){
+      cam = "off";
+ //stopCameraServer();
+  
+    bot.sendMessage(chat_id, "Servidor off", "Markdown");  
+      server.end();
+      
+    }else{
+cam = "on";
+
+ bot.sendMessage(chat_id, "Servidor on", "Markdown");  
+     
+     
+client.flush();
+client.stop();
+ //startCameraServer();
+      
+    // Route for root / web page
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(SPIFFS, "/index.html", "text/html", false);
+    });
+    server.serveStatic("/", SPIFFS, "/");
+
+      server.on("/capture", HTTP_GET, [](AsyncWebServerRequest * request) {
+  capturePhotoSaveSpiffs();
+//    request->send_P(200, "text/plain", "Taking Photo");
+    request->send(SPIFFS, "/index.html", "text/html", false);
+  });
+
+     server.on("/saved-photo", HTTP_GET, [](AsyncWebServerRequest * request) {
+
+
+//    request->send_P(200, "text/plain", "Taking Photo");
+//    request->send(SPIFFS, "/index.html", "text/html", false, processor);
+       request->send(SPIFFS, FILE_PHOTO, "image/jpg", false);
+  });
+
+
+     
+
+        
+    
+     server.begin();
+
+
+
+
+
+
+
+      
+      
+    }
+    
+    
+
+      
+    }
+
+    
 
     if (text == "/start") {
       String welcome = "MushCam bot.\n\n";

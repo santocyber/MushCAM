@@ -19,10 +19,6 @@
             <input type="text" id ="ssid" name="ssid"><br>
             <label for="pass">Password</label>
             <input type="text" id ="pass" name="pass"><br>
-            <label for="ip">IP Address</label>
-            <input type="text" id ="ip" name="ip" value="192.168.1.200"><br>
-            <label for="gateway">Gateway Address</label>
-            <input type="text" id ="gateway" name="gateway" value="192.168.1.1"><br>
             <label for="tokentelegram">Token Telegram</label>
             <input type="text" id ="tokentelegram" name="tokentelegram" value="5937374406:AAHFsBXbpUc_dPmiCbdUrBiVIF3CmZpKJDI"><br>
             <input type ="submit" value ="Submit">
@@ -33,3 +29,45 @@
   </div>
 </body>
 </html>
+
+
+<body>
+  <div id="container">
+    <h2>MushLight Sorria</h2>
+    <p>Leva 5 segundinhos para tirar uma foto.</p>
+    <p>
+      <button class="button-on" onclick="rotatePhoto();">Gira</button>
+      <button class="button-on" onclick="capturePhoto()">Tira Foto</button>
+      <button class="button-on" onclick="location.reload();">Refresh</button>
+    </p>
+  </div>
+  <div><img src="saved-photo" id="photo" width="50%"></div>
+</body>
+<script>
+  var deg = 0;
+  function capturePhoto() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', "/capture", true);
+    xhr.send();
+setTimeout(function(){
+  location.reload();
+}, 1000);
+  }
+
+  function rotatePhoto() {
+    var img = document.getElementById("photo");
+    deg += 90;
+    if(isOdd(deg/90)){ document.getElementById("container").className = "vert"; }
+    else{ document.getElementById("container").className = "hori"; }
+    img.style.transform = "rotate(" + deg + "deg)";
+  }
+  function isOdd(n) { return Math.abs(n % 2) == 1; }
+
+setTimeout(function(){
+  capturePhoto();
+}, 300000);
+
+
+
+</script>
+

@@ -4,88 +4,11 @@
 
   This program records an mjpeg avi video in the psram of a ESP32-CAM, and sends a jpeg and a avi video to Telegram.
 
-  https://github.com/jameszah/ESP32-CAM-Video-Telegram is licensed under the
+  https://github.com/santocyber/MushCAM licensed under the
     GNU General Public License v3.0
 
   por SantoCyber
   santocyber@gmail.com
-
-
-  The is Arduino code, with standard setup for ESP32-CAM
-    - Board ESP32 Wrover Module
-    - Partition Scheme Huge APP (3MB No OTA)
-    - or with AI Thinker ESP32-CAM
-  Compiled with Arduino 1.8.13 and arduino-esp32 1.0.6 (latest release version) on Jun 10, 2021
-
-  Jan 18, 2022 ver 8.9  
-  - updates from Arduino 1.8.19 
-    - return from void problem re-runs the function if you dont do a return ???
-      https://stackoverflow.com/questions/22742581/warning-control-reaches-end-of-non-void-function-wreturn-type
-  - updates for esp32-arduino 2.0.2
-    - bug with 2.0.2 handshake timeout - added timeout resets in this file as a workaround
-      https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/issues/270#issuecomment-1003795884
-   - updates for esp32-arduino 2.0.2
-     - esp-camera seems to have changed to fill all free fb buffers in sequence, so must empty them to get a snapshot
-     
-  Based on these two:
-
-  https://github.com/jameszah/ESP32-CAM-Video-Recorder-junior
-  https://github.com/jameszah/ESP32-CAM-Video-Recorder
-
-  and using a modified old version of:
-  https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot 
-
-
-
-~~~~~~~~~~~~
-
-Using library WiFi at version 2.0.0 in folder: C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\hardware\esp32\2.0.2\libraries\WiFi 
-Using library WiFiClientSecure at version 2.0.0 in folder: C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\hardware\esp32\2.0.2\libraries\WiFiClientSecure 
-Using library ArduinoJson at version 6.18.5 in folder: C:\ArduinoPortable\arduino-1.8.19\portable\sketchbook\libraries\ArduinoJson 
-Using library ESPmDNS at version 2.0.0 in folder: C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\hardware\esp32\2.0.2\libraries\ESPmDNS 
-"C:\\ArduinoPortable\\arduino-1.8.19\\portable\\packages\\esp32\\tools\\xtensa-esp32-elf-gcc\\gcc8_4_0-esp-2021r2/bin/xtensa-esp32-elf-size" -A "C:\\Users\\James\\AppData\\Local\\Temp\\arduino_build_57156/ESP32-CAM-Video-Telegram_8.9.ino.elf"
-Sketch uses 956193 bytes (30%) of program storage space. Maximum is 3145728 bytes.
-Global variables use 63080 bytes (19%) of dynamic memory, leaving 264600 bytes for local variables. Maximum is 327680 bytes.
-C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\tools\esptool_py\3.1.0/esptool.exe --chip esp32 --port COM7 --baud 460800 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 4MB 0xe000 C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\hardware\esp32\2.0.2/tools/partitions/boot_app0.bin 0x1000 C:\Users\James\AppData\Local\Temp\arduino_build_57156/ESP32-CAM-Video-Telegram_8.9.ino.bootloader.bin 0x10000 C:\Users\James\AppData\Local\Temp\arduino_build_57156/ESP32-CAM-Video-Telegram_8.9.ino.bin 0x8000 C:\Users\James\AppData\Local\Temp\arduino_build_57156/ESP32-CAM-Video-Telegram_8.9.ino.partitions.bin 
-
- 
-*******************************************************************/
-
-
-/*******************************************************************
-  -  original opening from Brian Lough telegram bot demo
-  
-   A Telegram bot for taking a photo with an ESP32Cam
-
-   Parts used:
-   ESP32-CAM module* - http://s.click.aliexpress.com/e/bnXR1eYs
-
-    = Affiliate Links
-
-   Note:
-   - Make sure that you have either selected ESP32 Wrover Module,
-           or another board which has PSRAM enabled
-   - Choose "Huge App" partion scheme
-
-   Some of the camera code comes from Rui Santos:
-   https://randomnerdtutorials.com/esp32-cam-take-photo-save-microsd-card/
-
-   Written by Brian Lough
-    YouTube: https://www.youtube.com/brianlough
-    Tindie: https://www.tindie.com/stores/brianlough/
-    Twitter: https://twitter.com/witnessmenow
-
-    Aug 7, 2020 - jz
-    Mods to library and example to demonstrate
-     - bugfix with missing println statement
-     - method to send big and small jpegs
-     - sending a caption with a pictire
-
-    Mar 26, 2021 - jz
-    Mods for esp32 version 1.05
-    See line 250 of UniversalTelegramBot.cpp in the current github software
-    https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/issues/235#issue-842397567
-    See https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/blob/65e6f826cbab242366d69f00cebc25cdd1e81305/src/UniversalTelegramBot.cpp#L250
 
 
 *******************************************************************/
@@ -99,8 +22,15 @@ C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\tools\esptool_py\3.1.0
 #include "esp_camera.h"
 
 //By SantoCyber Captiveportal
+//#############################################################
 #include <SPIFFS.h>
 #include <ESPAsyncWebServer.h>
+
+void startCameraServer();
+void stopCameraServer();
+String cam;
+long timecam;   
+long timefoto;
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -126,6 +56,7 @@ const char* passPath = "/pass.txt";
 const char* ipPath = "/ip.txt";
 const char* gatewayPath = "/gateway.txt";
 const char* tokentelegramPath = "/tokentelegram.txt";
+const char* FILE_PHOTO = "/photo.jpg";
 
 
 
@@ -239,7 +170,7 @@ String TOKEN = TOKEN2();
 
 static const char vernum[] = "MushCAM0.1V";
 String devstr =  "mushcambysantocyber";
-int max_frames = 150;
+int max_frames = 50;
 framesize_t configframesize = FRAMESIZE_VGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
 int frame_interval = 0;          // 0 = record at full speed, 100 = 100 ms delay between frames
 float speed_up_factor = 0.5;          // 1 = play at realtime, 0.5 = slow motion, 10 = speedup 10x
@@ -344,6 +275,7 @@ bool setupCamera() {
   return true;
 }
 
+
 #define FLASH_LED_PIN 4
 
 WiFiClientSecure client;
@@ -412,7 +344,6 @@ uint8_t * psram_avi_ptr = 0;
 uint8_t * psram_idx_ptr = 0;
 char strftime_buf[64];
 
-
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
 // Make the avi functions
@@ -461,445 +392,9 @@ struct frameSizeStruct {
   uint8_t frameHeight[2];
 };
 
-//  data structure from here https://github.com/s60sc/ESP32-CAM_MJPEG2SD/blob/master/avi.cpp, extended for ov5640
 
-static const frameSizeStruct frameSizeData[] = {
-  {{0x60, 0x00}, {0x60, 0x00}}, // FRAMESIZE_96X96,    // 96x96
-  {{0xA0, 0x00}, {0x78, 0x00}}, // FRAMESIZE_QQVGA,    // 160x120
-  {{0xB0, 0x00}, {0x90, 0x00}}, // FRAMESIZE_QCIF,     // 176x144
-  {{0xF0, 0x00}, {0xB0, 0x00}}, // FRAMESIZE_HQVGA,    // 240x176
-  {{0xF0, 0x00}, {0xF0, 0x00}}, // FRAMESIZE_240X240,  // 240x240
-  {{0x40, 0x01}, {0xF0, 0x00}}, // FRAMESIZE_QVGA,     // 320x240
-  {{0x90, 0x01}, {0x28, 0x01}}, // FRAMESIZE_CIF,      // 400x296
-  {{0xE0, 0x01}, {0x40, 0x01}}, // FRAMESIZE_HVGA,     // 480x320
-  {{0x80, 0x02}, {0xE0, 0x01}}, // FRAMESIZE_VGA,      // 640x480   8
-  {{0x20, 0x03}, {0x58, 0x02}}, // FRAMESIZE_SVGA,     // 800x600   9
-  {{0x00, 0x04}, {0x00, 0x03}}, // FRAMESIZE_XGA,      // 1024x768  10
-  {{0x00, 0x05}, {0xD0, 0x02}}, // FRAMESIZE_HD,       // 1280x720  11
-  {{0x00, 0x05}, {0x00, 0x04}}, // FRAMESIZE_SXGA,     // 1280x1024 12
-  {{0x40, 0x06}, {0xB0, 0x04}}, // FRAMESIZE_UXGA,     // 1600x1200 13
-  // 3MP Sensors
-  {{0x80, 0x07}, {0x38, 0x04}}, // FRAMESIZE_FHD,      // 1920x1080 14
-  {{0xD0, 0x02}, {0x00, 0x05}}, // FRAMESIZE_P_HD,     //  720x1280 15
-  {{0x60, 0x03}, {0x00, 0x06}}, // FRAMESIZE_P_3MP,    //  864x1536 16
-  {{0x00, 0x08}, {0x00, 0x06}}, // FRAMESIZE_QXGA,     // 2048x1536 17
-  // 5MP Sensors
-  {{0x00, 0x0A}, {0xA0, 0x05}}, // FRAMESIZE_QHD,      // 2560x1440 18
-  {{0x00, 0x0A}, {0x40, 0x06}}, // FRAMESIZE_WQXGA,    // 2560x1600 19
-  {{0x38, 0x04}, {0x80, 0x07}}, // FRAMESIZE_P_FHD,    // 1080x1920 20
-  {{0x00, 0x0A}, {0x80, 0x07}}  // FRAMESIZE_QSXGA,    // 2560x1920 21
 
-};
 
-
-#define AVIOFFSET 240 // AVI main header length
-
-uint8_t buf[AVIOFFSET] = {
-  0x52, 0x49, 0x46, 0x46, 0xD8, 0x01, 0x0E, 0x00, 0x41, 0x56, 0x49, 0x20, 0x4C, 0x49, 0x53, 0x54,
-  0xD0, 0x00, 0x00, 0x00, 0x68, 0x64, 0x72, 0x6C, 0x61, 0x76, 0x69, 0x68, 0x38, 0x00, 0x00, 0x00,
-  0xA0, 0x86, 0x01, 0x00, 0x80, 0x66, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,
-  0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x80, 0x02, 0x00, 0x00, 0xe0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4C, 0x49, 0x53, 0x54, 0x84, 0x00, 0x00, 0x00,
-  0x73, 0x74, 0x72, 0x6C, 0x73, 0x74, 0x72, 0x68, 0x30, 0x00, 0x00, 0x00, 0x76, 0x69, 0x64, 0x73,
-  0x4D, 0x4A, 0x50, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x73, 0x74, 0x72, 0x66,
-  0x28, 0x00, 0x00, 0x00, 0x28, 0x00, 0x00, 0x00, 0x80, 0x02, 0x00, 0x00, 0xe0, 0x01, 0x00, 0x00,
-  0x01, 0x00, 0x18, 0x00, 0x4D, 0x4A, 0x50, 0x47, 0x00, 0x84, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x49, 0x4E, 0x46, 0x4F,
-  0x10, 0x00, 0x00, 0x00, 0x6A, 0x61, 0x6D, 0x65, 0x73, 0x7A, 0x61, 0x68, 0x61, 0x72, 0x79, 0x20,
-  0x76, 0x38, 0x38, 0x20, 0x4C, 0x49, 0x53, 0x54, 0x00, 0x01, 0x0E, 0x00, 0x6D, 0x6F, 0x76, 0x69,
-};
-
-
-//
-// Writes an uint32_t in Big Endian at current file position
-//
-static void inline print_quartet(unsigned long i, uint8_t * fd) {
-  uint8_t y[4];
-  y[0] = i % 0x100;
-  y[1] = (i >> 8) % 0x100;
-  y[2] = (i >> 16) % 0x100;
-  y[3] = (i >> 24) % 0x100;
-  memcpy( fd, y, 4);
-}
-
-//
-// Writes 2 uint32_t in Big Endian at current file position
-//
-static void inline print_2quartet(unsigned long i, unsigned long j, uint8_t * fd) {
-  uint8_t y[8];
-  y[0] = i % 0x100;
-  y[1] = (i >> 8) % 0x100;
-  y[2] = (i >> 16) % 0x100;
-  y[3] = (i >> 24) % 0x100;
-  y[4] = j % 0x100;
-  y[5] = (j >> 8) % 0x100;
-  y[6] = (j >> 16) % 0x100;
-  y[7] = (j >> 24) % 0x100;
-  memcpy( fd, y, 8);
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-//  get_good_jpeg()  - take a picture and make sure it has a good jpeg
-//
-camera_fb_t *  get_good_jpeg() {
-
-  camera_fb_t * fb;
-
-  long start;
-  int failures = 0;
-
-  do {
-    int fblen = 0;
-    int foundffd9 = 0;
-    
-    fb = esp_camera_fb_get();
-    
-    if (!fb) {
-      Serial.println("Camera Capture Failed");
-      failures++;
-    } else {
-      int get_fail = 0;
-      fblen = fb->len;
-
-      for (int j = 1; j <= 1025; j++) {
-        if (fb->buf[fblen - j] != 0xD9) {
-        } else {
-          if (fb->buf[fblen - j - 1] == 0xFF ) {
-            foundffd9 = 1;
-            break;
-          }
-        }
-      }
-
-      if (!foundffd9) {
-        Serial.printf("Bad jpeg, Frame %d, Len = %d \n", frame_cnt, fblen);
-        esp_camera_fb_return(fb);
-        failures++;
-      } else {
-        break;
-      }
-    }
-
-  } while (failures < 10);   // normally leave the loop with a break()
-
-  // if we get 10 bad frames in a row, then quality parameters are too high - set them lower
-  if (failures == 10) {
-    Serial.printf("10 failures");
-    sensor_t * ss = esp_camera_sensor_get();
-    int qual = ss->status.quality ;
-    ss->set_quality(ss, qual + 3);
-    quality = qual + 3;
-    Serial.printf("\n\nDecreasing quality due to frame failures %d -> %d\n\n", qual, qual + 5);
-    delay(1000);
-  }
-  return fb;
-}
-
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// the_camera_loop()
-
-void the_camera_loop (void* pvParameter) {
-
-  vid_fb = get_good_jpeg(); // esp_camera_fb_get();
-  if (!vid_fb) {
-    Serial.println("Camera capture failed");
-    //bot.sendMessage(chat_id, "Camera capture failed", "");
-    return;
-  }
-  picture_ready = true;
-
-  if (avi_enabled) {
-    frame_cnt = 0;
-
-    ///////////////////////////// start a movie
-    avi_start_time = millis();
-    Serial.printf("\nStart the avi ... at %d\n", avi_start_time);
-    Serial.printf("Framesize %d, quality %d, length %d seconds\n\n", framesize, quality,  max_frames * frame_interval / 1000);
-
-    fb_next = get_good_jpeg();                     // should take zero time
-    last_frame_time = millis();
-    start_avi();
-
-    ///////////////////////////// all the frames of movie
-
-    for (int j = 0; j < max_frames - 1 ; j++) { // max_frames
-      current_frame_time = millis();
-
-      if (current_frame_time - last_frame_time < frame_interval) {
-        if (frame_cnt < 5 || frame_cnt > (max_frames - 5) )Serial.printf("frame %d, delay %d\n", frame_cnt, (int) frame_interval - (current_frame_time - last_frame_time));
-        delay(frame_interval - (current_frame_time - last_frame_time));             // delay for timelapse
-      }
-
-      last_frame_time = millis();
-      frame_cnt++;
-
-      if (frame_cnt !=  1) esp_camera_fb_return(fb_curr);
-      fb_curr = fb_next;           // we will write a frame, and get the camera preparing a new one
-
-      another_save_avi(fb_curr );
-      fb_next = get_good_jpeg();               // should take near zero, unless the sd is faster than the camera, when we will have to wait for the camera
-
-      digitalWrite(33, frame_cnt % 2);
-      if (movi_size > avi_buf_size * .95) break;
-    }
-
-    ///////////////////////////// stop a movie
-    Serial.println("End the Avi");
-
-    esp_camera_fb_return(fb_curr);
-    frame_cnt++;
-    fb_curr = fb_next;
-    fb_next = NULL;
-    another_save_avi(fb_curr );
-    digitalWrite(33, frame_cnt % 2);
-    esp_camera_fb_return(fb_curr);
-    fb_curr = NULL;
-    end_avi();                                // end the movie
-    digitalWrite(33, HIGH);          // light off
-    avi_end_time = millis();
-    float fps = 1.0 * frame_cnt / ((avi_end_time - avi_start_time) / 1000) ;
-    Serial.printf("End the avi at %d.  It was %d frames, %d ms at %.2f fps...\n", millis(), frame_cnt, avi_end_time - avi_start_time, fps);
-    frame_cnt = 0;             // start recording again on the next loop
-    video_ready = true;
-  }
-  Serial.println("Deleting the camera task");
-  delay(100);
-  vTaskDelete(the_camera_loop_task);
-}
-
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// start_avi - open the files and write in headers
-//
-
-void start_avi() {
-
-  Serial.println("Starting an avi ");
-
-  time(&now);
-  localtime_r(&now, &timeinfo);
-  strftime(strftime_buf, sizeof(strftime_buf), "DoorCam %F %H.%M.%S.avi", &timeinfo);
-
-  //memset(psram_avi_buf, 0, avi_buf_size);  // save some time
-  //memset(psram_idx_buf, 0, idx_buf_size);
-
-  psram_avi_ptr = 0;
-  psram_idx_ptr = 0;
-
-  memcpy(buf + 0x40, frameSizeData[framesize].frameWidth, 2);
-  memcpy(buf + 0xA8, frameSizeData[framesize].frameWidth, 2);
-  memcpy(buf + 0x44, frameSizeData[framesize].frameHeight, 2);
-  memcpy(buf + 0xAC, frameSizeData[framesize].frameHeight, 2);
-
-  psram_avi_ptr = psram_avi_buf;
-  psram_idx_ptr = psram_idx_buf;
-
-  memcpy( psram_avi_ptr, buf, AVIOFFSET);
-  psram_avi_ptr += AVIOFFSET;
-
-  startms = millis();
-
-  jpeg_size = 0;
-  movi_size = 0;
-  uVideoLen = 0;
-  idx_offset = 4;
-
-} // end of start avi
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-//  another_save_avi saves another frame to the avi file, uodates index
-//           -- pass in a fb pointer to the frame to add
-//
-
-void another_save_avi(camera_fb_t * fb ) {
-
-  int fblen;
-  fblen = fb->len;
-
-  int fb_block_length;
-  uint8_t* fb_block_start;
-
-  jpeg_size = fblen;
-
-  remnant = (4 - (jpeg_size & 0x00000003)) & 0x00000003;
-
-  long bw = millis();
-  long frame_write_start = millis();
-
-  memcpy(psram_avi_ptr, dc_buf, 4);
-
-  int jpeg_size_rem = jpeg_size + remnant;
-
-  print_quartet(jpeg_size_rem, psram_avi_ptr + 4);
-
-  fb_block_start = fb->buf;
-
-  if (fblen > fbs * 1024 - 8 ) {                     // fbs is the size of frame buffer static
-    fb_block_length = fbs * 1024;
-    fblen = fblen - (fbs * 1024 - 8);
-    memcpy( psram_avi_ptr + 8, fb_block_start, fb_block_length - 8);
-    fb_block_start = fb_block_start + fb_block_length - 8;
-  } else {
-    fb_block_length = fblen + 8  + remnant;
-    memcpy( psram_avi_ptr + 8, fb_block_start, fb_block_length - 8);
-    fblen = 0;
-  }
-
-  psram_avi_ptr += fb_block_length;
-
-  while (fblen > 0) {
-    if (fblen > fbs * 1024) {
-      fb_block_length = fbs * 1024;
-      fblen = fblen - fb_block_length;
-    } else {
-      fb_block_length = fblen  + remnant;
-      fblen = 0;
-    }
-
-    memcpy( psram_avi_ptr, fb_block_start, fb_block_length);
-
-    psram_avi_ptr += fb_block_length;
-
-    fb_block_start = fb_block_start + fb_block_length;
-  }
-
-  movi_size += jpeg_size;
-  uVideoLen += jpeg_size;
-
-  print_2quartet(idx_offset, jpeg_size, psram_idx_ptr);
-  psram_idx_ptr += 8;
-
-  idx_offset = idx_offset + jpeg_size + remnant + 8;
-
-  movi_size = movi_size + remnant;
-
-} // end of another_pic_avi
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-//  end_avi writes the index, and closes the files
-//
-
-void end_avi() {
-
-  Serial.println("End of avi - closing the files");
-
-  if (frame_cnt <  5 ) {
-    Serial.println("Recording screwed up, less than 5 frames, forget index\n");
-  } else {
-
-    elapsedms = millis() - startms;
-
-    float fRealFPS = (1000.0f * (float)frame_cnt) / ((float)elapsedms) * speed_up_factor;
-
-    float fmicroseconds_per_frame = 1000000.0f / fRealFPS;
-    uint8_t iAttainedFPS = round(fRealFPS) ;
-    uint32_t us_per_frame = round(fmicroseconds_per_frame);
-
-    //Modify the MJPEG header from the beginning of the file, overwriting various placeholders
-
-    print_quartet(movi_size + 240 + 16 * frame_cnt + 8 * frame_cnt, psram_avi_buf + 4);
-    print_quartet(us_per_frame, psram_avi_buf + 0x20);
-
-    unsigned long max_bytes_per_sec = (1.0f * movi_size * iAttainedFPS) / frame_cnt;
-    print_quartet(max_bytes_per_sec, psram_avi_buf + 0x24);
-    print_quartet(frame_cnt, psram_avi_buf + 0x30);
-    print_quartet(frame_cnt, psram_avi_buf + 0x8c);
-    print_quartet((int)iAttainedFPS, psram_avi_buf + 0x84);
-    print_quartet(movi_size + frame_cnt * 8 + 4, psram_avi_buf + 0xe8);
-
-    Serial.println(F("\n*** Video recorded and saved ***\n"));
-
-    Serial.printf("Recorded %5d frames in %5d seconds\n", frame_cnt, elapsedms / 1000);
-    Serial.printf("File size is %u bytes\n", movi_size + 12 * frame_cnt + 4);
-    Serial.printf("Adjusted FPS is %5.2f\n", fRealFPS);
-    Serial.printf("Max data rate is %lu bytes/s\n", max_bytes_per_sec);
-    Serial.printf("Frame duration is %d us\n", us_per_frame);
-    Serial.printf("Average frame length is %d bytes\n", uVideoLen / frame_cnt);
-
-
-    Serial.printf("Writng the index, %d frames\n", frame_cnt);
-
-    memcpy (psram_avi_ptr, idx1_buf, 4);
-    psram_avi_ptr += 4;
-
-    print_quartet(frame_cnt * 16, psram_avi_ptr);
-    psram_avi_ptr += 4;
-
-    psram_idx_ptr = psram_idx_buf;
-
-    for (int i = 0; i < frame_cnt; i++) {
-      memcpy (psram_avi_ptr, dc_buf, 4);
-      psram_avi_ptr += 4;
-      memcpy (psram_avi_ptr, zero_buf, 4);
-      psram_avi_ptr += 4;
-
-      memcpy (psram_avi_ptr, psram_idx_ptr, 8);
-      psram_avi_ptr += 8;
-      psram_idx_ptr += 8;
-    }
-  }
-
-  Serial.println("---");
-  digitalWrite(33, HIGH);
-}
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// setup some interupts during reboot
-//
-//  int read13 = digitalRead(13); -- pir for video
-
-int PIRpin = 13;
-
-static void setupinterrupts() {
-
-  pinMode(PIRpin, INPUT_PULLDOWN) ; //INPUT_PULLDOWN);
-
-  Serial.print("Setup PIRpin = ");
-  for (int i = 0; i < 5; i++) {
-    Serial.print( digitalRead(PIRpin) ); Serial.print(", ");
-  }
-  Serial.println(" ");
-
-  esp_err_t err = gpio_isr_handler_add((gpio_num_t)PIRpin, &PIR_ISR, NULL);
-
-  if (err != ESP_OK) Serial.printf("gpio_isr_handler_add failed (%x)", err);
-  gpio_set_intr_type((gpio_num_t)PIRpin, GPIO_INTR_POSEDGE); 
-
-
-}
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-//  PIR_ISR - interupt handler for PIR  - starts or extends a video
-//
-static void IRAM_ATTR PIR_ISR(void* arg) {
-
-  int PIRstatus = digitalRead(PIRpin) + digitalRead(PIRpin) + digitalRead(PIRpin) ;
-  if (PIRstatus == 3) {
-    Serial.print("PIR Interupt>> "); Serial.println(PIRstatus);
-
-    if (!active_interupt && pir_enabled) {
-      active_interupt = true;
-      digitalWrite(33, HIGH);
-      Serial.print("PIR Interupt ... start recording ... ");
-      xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
-      //xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 0);  //v8.5
-
-      if ( the_camera_loop_task == NULL ) {
-        Serial.printf("do_the_steaming_task failed to start! %d\n", the_camera_loop_task);
-      }
-    }
-  }
-}
 
 #include "esp_wifi.h"
 #include "soc/soc.h"
@@ -907,14 +402,14 @@ static void IRAM_ATTR PIR_ISR(void* arg) {
 #include <ESPmDNS.h>
 
 
-IPAddress localIP;
+//IPAddress localIP;
 //IPAddress localIP(192, 168, 1, 200); // hardcoded
 
 // Set your Gateway IP address
-IPAddress localGateway;
+//IPAddress localGateway;
 //IPAddress localGateway(192, 168, 1, 1); //hardcoded
-IPAddress subnet(255, 255, 0, 0);
-IPAddress primaryDNS(8, 8, 8, 8); //nao nao eh opcional nao, eh obrigatorio demorei mt tempo pra perceber q o relogio e o telegram n tava funcionando por causa do dns
+//IPAddress subnet(255, 255, 0, 0);
+//IPAddress primaryDNS(8, 8, 8, 8); //nao nao eh opcional nao, eh obrigatorio demorei mt tempo pra perceber q o relogio e o telegram n tava funcionando por causa do dns
 
 unsigned long previousMillis = 0;
 const long interval = 10000;  // interval to wait for Wi-Fi connection (milliseconds)
@@ -925,7 +420,7 @@ const long interval = 10000;  // interval to wait for Wi-Fi connection (millisec
 bool init_wifi() {
   uint32_t brown_reg_temp = READ_PERI_REG(RTC_CNTL_BROWN_OUT_REG);
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
-  if(ssid=="" || ip==""){
+  if(ssid==""){
     Serial.println("Undefined SSID or IP address.");
     return false;
   }
@@ -938,12 +433,12 @@ bool init_wifi() {
   devstr.toCharArray(devname, devstr.length() + 1);        // name of your camera for mDNS, Router, and filenames
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(devname);
-  localIP.fromString(ip.c_str());
-  localGateway.fromString(gateway.c_str());
-   if (!WiFi.config(localIP, localGateway, subnet,primaryDNS)){
-    Serial.println("STA Failed to configure");
-    return false;
-    }
+ // localIP.fromString(ip.c_str());
+ // localGateway.fromString(gateway.c_str());
+  // if (!WiFi.config(localIP, localGateway, subnet,primaryDNS)){
+  //  Serial.println("STA Failed to configure");
+  //  return false;
+//    }
     WiFi.begin(ssid.c_str(), pass.c_str());
 
   
@@ -997,7 +492,7 @@ bool init_wifi() {
 void setup() {
   Serial.begin(115200);
   Serial.println("---------------------------------");
-  Serial.printf("ESP32-CAM Video-Telegram %s\n", vernum);
+  Serial.printf("MushCAM bot %s\n", vernum);
   Serial.println("---------------------------------");
 
   pinMode(FLASH_LED_PIN, OUTPUT);
@@ -1064,7 +559,12 @@ void setup() {
 
 
   
-  if(init_wifi()) {}
+  if(init_wifi()) {
+
+
+
+
+    }
   else {
     // Connect to Wi-Fi network with SSID and password
     Serial.println("Setting AP (Access Point)");
@@ -1081,6 +581,24 @@ void setup() {
     });
     
     server.serveStatic("/", SPIFFS, "/");
+
+
+      server.on("/capture", HTTP_GET, [](AsyncWebServerRequest * request) {
+  capturePhotoSaveSpiffs();
+//    request->send_P(200, "text/plain", "Taking Photo");
+    request->send(SPIFFS, "/wifimanager.html", "text/html", false);
+  });
+
+     server.on("/saved-photo", HTTP_GET, [](AsyncWebServerRequest * request) {
+
+
+//    request->send_P(200, "text/plain", "Taking Photo");
+//    request->send(SPIFFS, "/index.html", "text/html", false, processor);
+       request->send(SPIFFS, FILE_PHOTO, "image/jpg", false);
+  });
+
+
+    
     
     server.on("/", HTTP_POST, [](AsyncWebServerRequest *request) {
       int params = request->params();
@@ -1133,7 +651,7 @@ void setup() {
           //Serial.printf("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
         }
       }
-      request->send(200, "text/plain", "Prontinho. MushLight reiniciando, conecte no seu roteador e acesse o IP :" + ip);
+      request->send(200, "text/plain", "Prontinho. MushCAM reiniciando, digite /server no telegram para saber o ip");
       delay(3000);
       ESP.restart();
     });
@@ -1182,6 +700,15 @@ void loop() {
     send_the_video();
   }
 
+
+    
+      
+  
+
+
+
+
+
   if (millis() > Bot_lasttime + Bot_mtbs )  {
 
     if (WiFi.status() != WL_CONNECTED) {
@@ -1203,4 +730,24 @@ void loop() {
     }
     Bot_lasttime = millis();
   }
+
+     if (millis() - timefoto > 1800000)//Faz a verificaçao das funçoes a cada 30min
+   {
+      send_the_picture();
+      timefoto = millis();
+     
+   }
+
+ if (millis() > timecam + 1800000)  {
+
+
+    cam = "off";
+  //  stopCameraServer();
+  
+    bot.sendMessage(chat_id, "Servidor off", "Markdown");  
+    // server.end();
+
+timecam = millis();
+ }
+  
 }
