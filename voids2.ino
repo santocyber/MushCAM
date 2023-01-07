@@ -1,0 +1,213 @@
+
+void handleNewMessages(int numNewMessages) {
+  //Serial.println("handleNewMessages");
+  //Serial.println(String(numNewMessages));
+
+  for (int i = 0; i < numNewMessages; i++) {
+    chat_id = String(bot.messages[i].chat_id);
+    String text = bot.messages[i].text;
+    String from_name = bot.messages[i].from_name;
+ 
+    Serial.printf("\nGot a message %s\n", text);
+
+   
+    if (from_name == "") from_name = "Guest";
+
+    String hi = "Vc disse?: ";
+    hi += text;
+    bot.sendMessage(chat_id, hi, "Markdown");
+    client.setHandshakeTimeout(120000);
+    if (text == "/flash") {
+      flashState = !flashState;
+      digitalWrite(FLASH_LED_PIN, flashState);
+    }
+
+    if (text == "/status") {
+      String stat = "Device: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nip: " +  WiFi.localIP().toString() + "\nEnabled: " + pir_enabled + "\nAvi Enabled: " + avi_enabled;
+      if (frame_interval == 0) {
+        stat = stat + "\nFast 3 sec";
+      } else if (frame_interval == 125) {
+        stat = stat + "\nMed 10 sec";
+      } else {
+        stat = stat + "\nSlow 40 sec";
+      }
+      stat = stat + "\nQuality: " + quality;
+
+      bot.sendMessage(chat_id, stat, "");
+    }
+
+    if (text == "/reboot") {
+      reboot_request = true;
+    }
+
+    if (text == "/enable") {
+      pir_enabled = true;
+    }
+
+    if (text == "/disable") {
+      pir_enabled = false;
+    }
+
+    if (text == "/enavi") {
+      avi_enabled = true;
+    }
+
+    if (text == "/disavi") {
+      avi_enabled = false;
+    }
+
+    if (text == "/fast") {
+      max_frames = 150;
+      frame_interval = 0;
+      speed_up_factor = 0.5;
+      pir_enabled = true;
+      avi_enabled = true;
+    }
+
+    if (text == "/med") {
+      max_frames = 150;
+      frame_interval = 125;
+      speed_up_factor = 1;
+      pir_enabled = true;
+      avi_enabled = true;
+    }
+
+    if (text == "/slow") {
+      max_frames = 150;
+      frame_interval = 500;
+      speed_up_factor = 5;
+      pir_enabled = true;
+      avi_enabled = true;
+    }
+
+    /*
+    if (fb) {
+      esp_camera_fb_return(fb);
+      Serial.println("Return an fb ???");
+      if (fb) {
+        esp_camera_fb_return(fb);
+        Serial.println("Return another fb ?");
+      }
+    }
+    */
+
+    for (int j = 0; j < 4; j++) {
+    camera_fb_t * newfb = esp_camera_fb_get();
+    if (!newfb) {
+      Serial.println("Camera Capture Failed");
+    } else {
+      //Serial.print("Pic, len="); Serial.print(newfb->len);
+      //Serial.printf(", new fb %X\n", (long)newfb->buf);
+      esp_camera_fb_return(newfb);
+      delay(10);
+    }
+  }
+    if ( text == "/photo" || text == "/caption" ) {
+
+      fb = NULL;
+
+      // Take Picture with Camera
+      fb = esp_camera_fb_get();
+      if (!fb) {
+        Serial.println("Camera capture failed");
+        bot.sendMessage(chat_id, "Camera capture failed", "");
+        return;
+      }
+
+      currentByte = 0;
+      fb_length = fb->len;
+      fb_buffer = fb->buf;
+
+      if (text == "/caption") {
+
+        Serial.println("\n>>>>> Sending with a caption, bytes=  " + String(fb_length));
+
+        String sent = bot.sendMultipartFormDataToTelegramWithCaption("sendPhoto", "photo", "img.jpg",
+                      "image/jpeg", "Your photo", chat_id, fb_length,
+                      isMoreDataAvailable, getNextByte, nullptr, nullptr);
+
+        Serial.println("done!");
+
+      } else {
+
+        Serial.println("\n>>>>> Sending, bytes=  " + String(fb_length));
+
+        bot.sendPhotoByBinary(chat_id, "image/jpeg", fb_length,
+                              isMoreDataAvailable, getNextByte,
+                              nullptr, nullptr);
+
+        dataAvailable = true;
+
+        Serial.println("done!");
+      }
+      esp_camera_fb_return(fb);
+    }
+
+    if (text == "/vga" ) {
+
+      fb = NULL;
+
+      //sensor_t * s = esp_camera_sensor_get();
+      //s->set_framesize(s, FRAMESIZE_VGA);
+
+      Serial.println("\n\n\nSending VGA");
+
+      // Take Picture with Camera
+      fb = esp_camera_fb_get();
+      if (!fb) {
+        Serial.println("Camera capture failed");
+        bot.sendMessage(chat_id, "Camera capture failed", "");
+        return;
+      }
+
+      currentByte = 0;
+      fb_length = fb->len;
+      fb_buffer = fb->buf;
+
+      Serial.println("\n>>>>> Sending as 512 byte blocks, with jzdelay of 0, bytes=  " + String(fb_length));
+
+      bot.sendPhotoByBinary(chat_id, "image/jpeg", fb_length,
+                            isMoreDataAvailable, getNextByte,
+                            nullptr, nullptr);
+
+      esp_camera_fb_return(fb);
+    }
+
+
+    if (text == "/clip") {
+
+      // record the video
+      bot.longPoll =  0;
+
+    //  xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
+      xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 0);  //v8.5
+
+      if ( the_camera_loop_task == NULL ) {
+        //vTaskDelete( xHandle );
+        Serial.printf("do_the_steaming_task failed to start! %d\n", the_camera_loop_task);
+      }
+    }
+
+    if (text == "/start") {
+      String welcome = "MushCam bot.\n\n";
+      welcome += "/photo: take a photo\n";
+      welcome += "/flash: toggle flash LED\n";
+      welcome += "/caption: photo with caption\n";
+      welcome += "/clip: short video clip\n";
+      welcome += "\n Configure the clip\n";
+      welcome += "/enable: enable pir\n";
+      welcome += "/disable: disable pir\n";
+      welcome += "/enavi: enable avi\n";
+      welcome += "/disavi: disable avi\n";
+      welcome += "\n/fast: 25 fps - 3  sec - play .5x speed\n";
+      welcome += "/med: 8  fps - 10 sec - play 1x speed\n";
+      welcome += "/slow: 2  fps - 40 sec - play 5x speed\n";
+      welcome += "Acesse o ip http://";
+      welcome +=  WiFi.localIP().toString(); 
+      welcome += "\n/status: status\n";
+      welcome += "/reboot: reboot\n";
+      welcome += "/start: start\n";
+      bot.sendMessage(chat_id, welcome, "Markdown");
+    }
+  }
+}

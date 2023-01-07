@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+  <head>
+<link rel="manifest" href="manifest.json">
+<script>
+if ('serviceWorker' in navigator) {
+navigator.serviceWorker.register('sw.js');
+}
+</script>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="green">
+<meta name="apple-mobile-web-app-title" content="MushCAM">
+
+    <title>MushCAM Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+  </head>
+  <body>
+    <div class="topnav">
+      <h1>MushCAM Control</h1>
+    </div>
+    <div class="content">
+      <div class="card-grid">
+
+        <div class="card">
+
+
+        <div class="card">
+          <p class="card-title"><i class="fas fa-lightbulb"></i>CAM</p>
+          <p>
+<a href="grava"><button class="button-on">VIDEO TG</button></a>
+<a href="foto"><button class="button-on">FOTO TG</button></a>
+
+          </p>
+
+
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { text-align:center; }
+    .vert { margin-bottom: 10%; }
+    .hori{ margin-bottom: 0%; }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h2>MushLight Sorria</h2>
+    <p>Leva 5 segundinhos para tirar uma foto.</p>
+    <p>
+      <button class="button-on" onclick="rotatePhoto();">Gira</button>
+      <button class="button-on" onclick="capturePhoto()">Tira Foto</button>
+      <button class="button-on" onclick="location.reload();">Refresh</button>
+    </p>
+  </div>
+  <div><img src="saved-photo" id="photo" width="100%"></div>
+</body>
+<script>
+  var deg = 0;
+  function capturePhoto() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', "/capture", true);
+    xhr.send();
+setTimeout(function(){
+  location.reload();
+}, 6000);
+  }
+
+  function rotatePhoto() {
+    var img = document.getElementById("photo");
+    deg += 90;
+    if(isOdd(deg/90)){ document.getElementById("container").className = "vert"; }
+    else{ document.getElementById("container").className = "hori"; }
+    img.style.transform = "rotate(" + deg + "deg)";
+  }
+  function isOdd(n) { return Math.abs(n % 2) == 1; }
+
+setTimeout(function(){
+  capturePhoto();
+}, 300000);
+
+
+
+</script>
+
+
+
+<a href="/credito"> Agradecimentos ao desenvolvedor</a>
+    </div>
+  </body>
+</html>

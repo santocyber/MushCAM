@@ -1,0 +1,26 @@
+{
+  "name": "MushLight by SantoCyber",
+  "short_name": "MushLight",
+  "theme_color": "#2196f3",
+  "background_color": "#2196f3",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/index.html",
+  "icons": [
+    {
+      "src": "favicon.png",
+      "sizes": "72x72", 
+     "type": "image/png"
+        },
+    {
+      "src": "favicon.png",
+      "sizes": "256x256", 
+     "type": "image/png"
+        }
+  ],
+  "splash_pages": null
+
+
+}
+
