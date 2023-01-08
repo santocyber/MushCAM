@@ -20,6 +20,10 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include "esp_camera.h"
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
+
+
 
 //By SantoCyber Captiveportal
 //#############################################################
@@ -28,7 +32,7 @@
 
 void startCameraServer();
 void stopCameraServer();
-String cam;
+String cam = "on";
 long timecam;   
 long timefoto;
 
@@ -38,23 +42,17 @@ AsyncWebServer server(80);
 // Search for parameter in HTTP POST request
 const char* PARAM_INPUT_1 = "ssid";
 const char* PARAM_INPUT_2 = "pass";
-const char* PARAM_INPUT_3 = "ip";
-const char* PARAM_INPUT_4 = "gateway";
 const char* PARAM_INPUT_5 = "tokentelegram";
 
 
 //Variables to save values from HTML form
 String ssid;
 String pass;
-String ip;
-String gateway;
 String tokentelegram;
 
 // File paths to save input values permanently
 const char* ssidPath = "/ssid.txt";
 const char* passPath = "/pass.txt";
-const char* ipPath = "/ip.txt";
-const char* gatewayPath = "/gateway.txt";
 const char* tokentelegramPath = "/tokentelegram.txt";
 const char* FILE_PHOTO = "/photo.jpg";
 
@@ -495,6 +493,10 @@ void setup() {
   Serial.printf("MushCAM bot %s\n", vernum);
   Serial.println("---------------------------------");
 
+// in setup()
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+
+
   pinMode(FLASH_LED_PIN, OUTPUT);
   digitalWrite(FLASH_LED_PIN, flashState); //defaults to low
 
@@ -541,15 +543,11 @@ void setup() {
   // Load values saved in SPIFFS
   ssid = readFile(SPIFFS, ssidPath);
   pass = readFile(SPIFFS, passPath);
-  ip = readFile(SPIFFS, ipPath);
-  gateway = readFile (SPIFFS, gatewayPath);
   tokentelegram = readFile (SPIFFS, tokentelegramPath);
 
 
   Serial.println(ssid);
   Serial.println(pass);
-  Serial.println(ip);
-  Serial.println(gateway);
   Serial.println(tokentelegram);
 
 
@@ -560,6 +558,45 @@ void setup() {
 
   
   if(init_wifi()) {
+
+
+
+
+
+
+  // Route for root / web page
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(SPIFFS, "/index.html", "text/html", false);
+    });
+    server.serveStatic("/", SPIFFS, "/");
+
+      server.on("/capture", HTTP_GET, [](AsyncWebServerRequest * request) {
+  capturePhotoSaveSpiffs();
+//    request->send_P(200, "text/plain", "Taking Photo");
+    request->send(SPIFFS, "/index.html", "text/html", false);
+  });
+
+     server.on("/saved-photo", HTTP_GET, [](AsyncWebServerRequest * request) {
+
+
+//    request->send_P(200, "text/plain", "Taking Photo");
+//    request->send(SPIFFS, "/index.html", "text/html", false, processor);
+       request->send(SPIFFS, FILE_PHOTO, "image/jpg", false);
+  });
+
+
+     
+
+        
+    
+     server.begin();
+
+
+
+
+
+
+    
 
 
 
@@ -621,22 +658,7 @@ void setup() {
             // Write file to save value
             writeFile(SPIFFS, passPath, pass.c_str());
           }
-          // HTTP POST ip value
-          if (p->name() == PARAM_INPUT_3) {
-            ip = p->value().c_str();
-            Serial.print("IP Address set to: ");
-            Serial.println(ip);
-            // Write file to save value
-            writeFile(SPIFFS, ipPath, ip.c_str());
-          }
-          // HTTP POST gateway value
-          if (p->name() == PARAM_INPUT_4) {
-            gateway = p->value().c_str();
-            Serial.print("Gateway set to: ");
-            Serial.println(gateway);
-            // Write file to save value
-            writeFile(SPIFFS, gatewayPath, gateway.c_str());
-          }
+        
           // HTTP POST tokentelegram value
           if (p->name() == PARAM_INPUT_5) {
             tokentelegram = p->value().c_str();
@@ -738,16 +760,5 @@ void loop() {
      
    }
 
- if (millis() > timecam + 1800000)  {
-
-
-    cam = "off";
-  //  stopCameraServer();
-  
-    bot.sendMessage(chat_id, "Servidor off", "Markdown");  
-    // server.end();
-
-timecam = millis();
- }
   
 }

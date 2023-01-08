@@ -21,12 +21,14 @@ void handleNewMessages(int numNewMessages) {
     hi += text;
     bot.sendMessage(chat_id, hi, "Markdown");
     client.setHandshakeTimeout(120000);
-    if (text == "/flash") {
+    if (text.indexOf("/flash") > -1)//Caso o texto recebido contenha  blablabla      
+    {
       flashState = !flashState;
       digitalWrite(FLASH_LED_PIN, flashState);
     }
 
-    if (text == "/status") {
+    else if (text.indexOf("/status") > -1)//Caso o texto recebido contenha  blablabla      
+    {
       String stat = "Device: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nip: " +  WiFi.localIP().toString() + "\nEnabled: " + pir_enabled + "\nAvi Enabled: " + avi_enabled;
       if (frame_interval == 0) {
         stat = stat + "\nFast 3 sec";
@@ -40,27 +42,29 @@ void handleNewMessages(int numNewMessages) {
       bot.sendMessage(chat_id, stat, "");
     }
 
-    if (text == "/reboot") {
+    else if (text.indexOf("/reboot") > -1)//Caso o texto recebido contenha  blablabla  
+    {
       reboot_request = true;
     }
 
-    if (text == "/enable") {
+    else if (text.indexOf("/enable") > -1)//Caso o texto recebido contenha  blablabla       
+    {
       pir_enabled = true;
     }
 
-    if (text == "/disable") {
+    else if (text.indexOf("/disable") > -1){
       pir_enabled = false;
     }
 
-    if (text == "/enavi") {
+    else if (text.indexOf("/enavi") > -1){
       avi_enabled = true;
     }
 
-    if (text == "/disavi") {
+    else if (text.indexOf("/disavi") > -1){
       avi_enabled = false;
     }
 
-    if (text == "/fast") {
+    else if (text.indexOf("/fast") > -1){
       max_frames = 150;
       frame_interval = 0;
       speed_up_factor = 0.5;
@@ -68,7 +72,7 @@ void handleNewMessages(int numNewMessages) {
       avi_enabled = true;
     }
 
-    if (text == "/med") {
+    else if (text.indexOf("/med") > -1){
       max_frames = 150;
       frame_interval = 125;
       speed_up_factor = 1;
@@ -76,7 +80,7 @@ void handleNewMessages(int numNewMessages) {
       avi_enabled = true;
     }
 
-    if (text == "/slow") {
+    else if (text.indexOf("/slow") > -1){
       max_frames = 150;
       frame_interval = 500;
       speed_up_factor = 5;
@@ -95,6 +99,7 @@ void handleNewMessages(int numNewMessages) {
     }
     */
 
+/*
     for (int j = 0; j < 4; j++) {
     camera_fb_t * newfb = esp_camera_fb_get();
     if (!newfb) {
@@ -106,7 +111,52 @@ void handleNewMessages(int numNewMessages) {
       delay(10);
     }
   }
-    if ( text == "/photo" || text == "/caption" ) {
+*/  
+     
+
+     else if (text.indexOf("/foto") > -1){
+
+      fb = NULL;
+
+
+       digitalWrite(FLASH_LED_PIN, HIGH);
+
+      fb = esp_camera_fb_get();
+      esp_camera_fb_return(fb);
+      delay(200);
+
+      // Take Picture with Camera
+      fb = esp_camera_fb_get();
+      if (!fb) {
+        Serial.println("Camera capture failed");
+        bot.sendMessage(chat_id, "Camera capture failed", "");
+        return;
+      }
+
+       digitalWrite(FLASH_LED_PIN, LOW);
+
+      currentByte = 0;
+      fb_length = fb->len;
+      fb_buffer = fb->buf;
+
+      Serial.println("\n>>>>> Sending, bytes=  " + String(fb_length));
+
+        bot.sendPhotoByBinary(chat_id, "image/jpeg", fb_length,
+                              isMoreDataAvailable, getNextByte,
+                              nullptr, nullptr);
+
+        dataAvailable = true;
+
+        Serial.println("done!");
+      
+      esp_camera_fb_return(fb);
+     }
+
+
+
+      
+
+      else if (text.indexOf("/caption") > -1){
 
       fb = NULL;
 
@@ -122,8 +172,7 @@ void handleNewMessages(int numNewMessages) {
       fb_length = fb->len;
       fb_buffer = fb->buf;
 
-      if (text == "/caption") {
-
+        
         Serial.println("\n>>>>> Sending with a caption, bytes=  " + String(fb_length));
 
         String sent = bot.sendMultipartFormDataToTelegramWithCaption("sendPhoto", "photo", "img.jpg",
@@ -132,22 +181,14 @@ void handleNewMessages(int numNewMessages) {
 
         Serial.println("done!");
 
-      } else {
+      } 
 
-        Serial.println("\n>>>>> Sending, bytes=  " + String(fb_length));
+      
 
-        bot.sendPhotoByBinary(chat_id, "image/jpeg", fb_length,
-                              isMoreDataAvailable, getNextByte,
-                              nullptr, nullptr);
+  
+    
 
-        dataAvailable = true;
-
-        Serial.println("done!");
-      }
-      esp_camera_fb_return(fb);
-    }
-
-    if (text == "/vga" ) {
+    else if (text.indexOf("/vga" ) > -1){
 
       fb = NULL;
 
@@ -178,7 +219,7 @@ void handleNewMessages(int numNewMessages) {
     }
 
 
-    if (text == "/clip") {
+    else if (text.indexOf("/clip") > -1){
 
       // record the video
       bot.longPoll =  0;
@@ -193,7 +234,18 @@ void handleNewMessages(int numNewMessages) {
     }
 
 
-    if (text == "/server") {
+    else if (text.indexOf("/server") > -1){
+
+    if (cam == "on"){
+      cam = "off";
+ //stopCameraServer();
+  
+    bot.sendMessage(chat_id, "Servidor off", "Markdown");  
+      server.end();
+  //    client.flush();
+      
+    }else{
+cam = "on";
 
     String welcome = "MushCam bot.\n\n";
       
@@ -202,21 +254,12 @@ void handleNewMessages(int numNewMessages) {
     welcome += "\n";
     welcome += "servidor local,Sorria!";
     bot.sendMessage(chat_id, welcome, "Markdown");  
-    if (cam == "on"){
-      cam = "off";
- //stopCameraServer();
-  
-    bot.sendMessage(chat_id, "Servidor off", "Markdown");  
-      server.end();
-      
-    }else{
-cam = "on";
 
  bot.sendMessage(chat_id, "Servidor on", "Markdown");  
      
      
 client.flush();
-client.stop();
+//client.stop();
  //startCameraServer();
       
     // Route for root / web page
@@ -263,9 +306,9 @@ client.stop();
 
     
 
-    if (text == "/start") {
+    else if (text.indexOf("/start") > -1){
       String welcome = "MushCam bot.\n\n";
-      welcome += "/photo: take a photo\n";
+      welcome += "/foto: take a photo\n";
       welcome += "/flash: toggle flash LED\n";
       welcome += "/caption: photo with caption\n";
       welcome += "/clip: short video clip\n";
@@ -277,6 +320,8 @@ client.stop();
       welcome += "\n/fast: 25 fps - 3  sec - play .5x speed\n";
       welcome += "/med: 8  fps - 10 sec - play 1x speed\n";
       welcome += "/slow: 2  fps - 40 sec - play 5x speed\n";
+      welcome += "\n Acesse localmente\n";
+      welcome += "/server: Server on Server off \n";
       welcome += "Acesse o ip http://";
       welcome +=  WiFi.localIP().toString(); 
       welcome += "\n/status: status\n";

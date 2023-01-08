@@ -510,7 +510,7 @@ void send_the_picture() {
   fb_length = vid_fb->len;
   fb_buffer = vid_fb->buf;
 
-  Serial.println("\n>>>>> Sending as 512 byte blocks, with jzdelay of 0, bytes=  " + String(fb_length));
+  Serial.println("\n>>>>> Sending foto as 512 byte blocks, with jzdelay of 0, bytes=  " + String(fb_length));
 
   if (active_interupt) {
     String sent = bot.sendMultipartFormDataToTelegramWithCaption("sendPhoto", "photo", "img.jpg",
@@ -530,7 +530,7 @@ void send_the_picture() {
 void send_the_video() {
   digitalWrite(33, LOW);          // light on
   Serial.println("\n\n\nSending clip with caption");
-  Serial.println("\n>>>>> Sending as 512 byte blocks, with a caption, and with jzdelay of 0, bytes=  " + String(psram_avi_ptr - psram_avi_buf));
+  Serial.println("\n>>>>> Sending video as 512 byte blocks, with a caption, and with jzdelay of 0, bytes=  " + String(psram_avi_ptr - psram_avi_buf));
   avi_buf = psram_avi_buf;
 
   avi_ptr = 0;
