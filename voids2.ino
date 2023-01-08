@@ -99,7 +99,7 @@ void handleNewMessages(int numNewMessages) {
     }
     */
 
-/*
+
     for (int j = 0; j < 4; j++) {
     camera_fb_t * newfb = esp_camera_fb_get();
     if (!newfb) {
@@ -108,13 +108,13 @@ void handleNewMessages(int numNewMessages) {
       //Serial.print("Pic, len="); Serial.print(newfb->len);
       //Serial.printf(", new fb %X\n", (long)newfb->buf);
       esp_camera_fb_return(newfb);
-      delay(10);
+      delay(30);
     }
   }
-*/  
+  
      
 
-     else if (text.indexOf("/foto") > -1){
+      if (text.indexOf("/foto") > -1){
 
       fb = NULL;
 
@@ -123,7 +123,7 @@ void handleNewMessages(int numNewMessages) {
 
       fb = esp_camera_fb_get();
       esp_camera_fb_return(fb);
-      delay(200);
+      delay(100);
 
       // Take Picture with Camera
       fb = esp_camera_fb_get();

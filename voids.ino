@@ -483,16 +483,20 @@ static void IRAM_ATTR PIR_ISR(void* arg) {
   if (PIRstatus == 3) {
     Serial.print("PIR Interupt>> "); Serial.println(PIRstatus);
 
+
     if (!active_interupt && pir_enabled) {
       active_interupt = true;
       digitalWrite(33, HIGH);
       Serial.print("PIR Interupt ... start recording ... ");
-      xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
+
+
+      xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 20000, NULL, 1, &the_camera_loop_task, 1);
       //xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 0);  //v8.5
 
       if ( the_camera_loop_task == NULL ) {
         Serial.printf("do_the_steaming_task failed to start! %d\n", the_camera_loop_task);
       }
+
     }
   }
 }

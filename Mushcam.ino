@@ -22,7 +22,10 @@
 #include "esp_camera.h"
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
+//#include <SafeString.h>
+#include <Arduino.h>
 
+//#include <String.h>
 
 
 //By SantoCyber Captiveportal
@@ -692,7 +695,7 @@ void setup() {
   String stat = "Reboot\nDevice: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nip: " +  WiFi.localIP().toString() + "\n/start";
   bot.sendMessage(chat_id, stat, "");
 
-  pir_enabled = true;
+  pir_enabled = false;
   avi_enabled = false;
   digitalWrite(33, HIGH);
 }
